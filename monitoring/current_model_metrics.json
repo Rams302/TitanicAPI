@@ -1,0 +1,29 @@
+{
+    "model_name": "TitanicAutoML",
+
+    "model_version": "1.0",
+
+    "description": "Configuracion de metricas y umbrales para monitoreo del modelo Titanic",
+
+    "thresholds": {
+
+        "max_latency_seconds": 2.0,
+
+        "max_errors": 5,
+
+        "max_invalid_requests_percentage": 10,
+
+        "min_accuracy": 0.80
+
+    },
+
+    "alerts": {
+
+        "latency_warning": "ADVERTENCIA: la latencia superó el umbral permitido.",
+
+        "error_warning": "CRÍTICO: error durante la ejecución del modelo.",
+
+        "invalid_data_warning": "ADVERTENCIA: demasiadas solicitudes contienen datos invalidos."
+
+    }
+}
