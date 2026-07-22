@@ -1,30 +1,20 @@
 # -*- coding: utf-8 -*-
 
 """
-TitanicAutoML.py
+Titanic Dataset
+AutoGluon AutoML + MLflow Tracking
 
-Entrenamiento AutoML del dataset Titanic utilizando AutoGluon.
-
-Incluye:
-- Entrenamiento del modelo
-- Evaluación
-- Generación de métricas MLOps
-- Registro en MLflow
-- Exportación del modelo
-
-Proyecto:
-TitanicAPI - MLOps Observabilidad
+Entrenamiento y registro del modelo Titanic
 """
 
 
+
 # =====================================================
-# INSTALACIÓN DE DEPENDENCIAS (COLAB)
+# INSTALAR DEPENDENCIAS
 # =====================================================
 
-# Descomentar si se ejecuta directamente en Google Colab
+!pip -q install autogluon mlflow
 
-# !pip -q install autogluon
-# !pip -q install mlflow
 
 
 # =====================================================
@@ -33,35 +23,36 @@ TitanicAPI - MLOps Observabilidad
 
 
 import pandas as pd
-import json
-import os
+
 import shutil
 
-from datetime import datetime
+import os
+
+import time
+
 
 from google.colab import files
+
 
 from autogluon.tabular import TabularPredictor
 
 
-# MLFlow
-
 import mlflow
 
+import mlflow.sklearn
+
+
 
 
 # =====================================================
-# CONFIGURACIÓN DEL EXPERIMENTO
+# CONFIGURACIÓN MLFLOW
 # =====================================================
 
 
-PROJECT_NAME = "TitanicAPI"
+mlflow.set_experiment(
 
-MODEL_NAME = "TitanicAutoML"
+    "TitanicAutoML"
 
-
-TRAINING_DATE = datetime.now().strftime(
-    "%Y-%m-%d %H:%M:%S"
 )
 
 
@@ -71,11 +62,10 @@ TRAINING_DATE = datetime.now().strftime(
 # =====================================================
 
 
-print("\nCargando dataset Titanic...\n")
-
-
 df = pd.read_csv(
+
     "train.csv"
+
 )
 
 
@@ -87,15 +77,10 @@ print(df.info())
 
 
 
+
 # =====================================================
-# LIMPIEZA DE DATOS
+# PREPARACIÓN DATASET
 # =====================================================
-
-
-print(
-    "\nEliminando columnas poco útiles..."
-)
-
 
 
 df = df.drop(
@@ -116,14 +101,9 @@ df = df.drop(
 
 
 
-print(
-    "Columnas eliminadas correctamente"
-)
-
-
 
 # =====================================================
-# DIVISIÓN TRAIN / TEST
+# SEPARACIÓN TRAIN / TEST
 # =====================================================
 
 
@@ -138,7 +118,9 @@ train = df.sample(
 
 
 test = df.drop(
+
     train.index
+
 )
 
 
@@ -146,237 +128,45 @@ test = df.drop(
 print()
 
 print(
+
     "Train:",
+
     train.shape
+
 )
 
 
 print(
-    "Test :",
+
+    "Test:",
+
     test.shape
+
 )
+
 
 
 
 # =====================================================
-# ENTRENAMIENTO AUTOGLUON
+# ENTRENAMIENTO + MLFLOW TRACKING
 # =====================================================
 
 
-print(
-    "\nEntrenando modelo AutoML...\n"
-)
 
+with mlflow.start_run(
 
+    run_name="Titanic_AutoGluon_Run"
 
-predictor = TabularPredictor(
+):
 
-    label="Survived",
 
-    eval_metric="accuracy"
+    start_time = time.time()
 
-).fit(
 
-    train_data=train,
 
-    presets="medium_quality",
-
-    hyperparameters={
-
-        "GBM": {},
-
-        "RF": {},
-
-        "XT": {},
-
-        "CAT": {},
-
-        "XGB": {}
-
-    }
-
-)
-
-
-
-print(
-    "\nEntrenamiento finalizado"
-)
-
-
-
-# =====================================================
-# LEADERBOARD
-# =====================================================
-
-
-leaderboard = predictor.leaderboard(
-
-    test
-
-)
-
-
-
-print(
-    leaderboard
-)
-
-
-
-# =====================================================
-# MODELO GANADOR
-# =====================================================
-
-
-best_model = predictor.model_best
-
-
-
-print()
-
-print(
-    "Mejor modelo:"
-)
-
-
-print(
-    best_model
-)
-
-
-
-# =====================================================
-# EVALUACIÓN DEL MODELO
-# =====================================================
-
-
-performance = predictor.evaluate(
-
-    test
-
-)
-
-
-
-print()
-
-print(
-    "Métricas del modelo:"
-)
-
-
-print(
-    performance
-)
-
-
-
-accuracy = performance["accuracy"]
-
-
-
-# =====================================================
-# GENERACIÓN DE MÉTRICAS PARA MLOPS
-# =====================================================
-
-
-print(
-    "\nGenerando archivo model_metrics.json..."
-)
-
-
-
-model_metrics = {
-
-
-    "model_name":
-        MODEL_NAME,
-
-
-    "framework":
-        "AutoGluon",
-
-
-    "framework_version":
-        "1.4.0",
-
-
-    "best_model":
-        best_model,
-
-
-    "evaluation_metric":
-        "accuracy",
-
-
-    "accuracy":
-        float(accuracy),
-
-
-    "training_rows":
-        int(len(train)),
-
-
-    "testing_rows":
-        int(len(test)),
-
-
-    "training_date":
-        TRAINING_DATE
-
-
-}
-
-
-
-with open(
-
-    "model_metrics.json",
-
-    "w"
-
-) as file:
-
-
-    json.dump(
-
-        model_metrics,
-
-        file,
-
-        indent=4
-
-    )
-
-
-
-print(
-    "model_metrics.json creado correctamente"
-)
-
-
-
-# =====================================================
-# REGISTRO MLflow
-# =====================================================
-
-
-print(
-    "\nRegistrando experimento en MLflow..."
-)
-
-
-
-mlflow.set_experiment(
-
-    PROJECT_NAME
-
-)
-
-
-
-with mlflow.start_run():
+    # -------------------------------------------------
+    # Registrar parámetros
+    # -------------------------------------------------
 
 
     mlflow.log_param(
@@ -390,15 +180,6 @@ with mlflow.start_run():
 
     mlflow.log_param(
 
-        "best_model",
-
-        best_model
-
-    )
-
-
-    mlflow.log_param(
-
         "preset",
 
         "medium_quality"
@@ -406,122 +187,281 @@ with mlflow.start_run():
     )
 
 
-    mlflow.log_metric(
+    mlflow.log_param(
 
-        "accuracy",
+        "evaluation_metric",
 
-        float(accuracy)
+        "accuracy"
 
     )
 
 
-    mlflow.log_metric(
+    mlflow.log_param(
 
-        "training_rows",
+        "train_size",
 
         len(train)
 
     )
 
 
-    mlflow.log_metric(
+    mlflow.log_param(
 
-        "testing_rows",
+        "test_size",
 
         len(test)
 
     )
 
 
-    mlflow.log_artifact(
 
-        "model_metrics.json"
+    # -------------------------------------------------
+    # Entrenar modelo
+    # -------------------------------------------------
+
+
+    predictor = TabularPredictor(
+
+        label="Survived",
+
+        eval_metric="accuracy"
+
+    ).fit(
+
+        train_data=train,
+
+        presets="medium_quality",
+
+        hyperparameters={
+
+
+            "GBM": {},
+
+            "RF": {},
+
+            "XT": {},
+
+            "CAT": {},
+
+            "XGB": {}
+
+        }
 
     )
 
 
 
-print(
+    training_time = (
 
-    "Información registrada en MLflow"
+        time.time()
 
-)
+        -
+
+        start_time
+
+    )
+
+
+
+    # -------------------------------------------------
+    # Ranking modelos
+    # -------------------------------------------------
+
+
+    leaderboard = predictor.leaderboard(
+
+        test
+
+    )
+
+
+
+    print(leaderboard)
+
+
+
+
+    # -------------------------------------------------
+    # Mejor modelo
+    # -------------------------------------------------
+
+
+    best_model = predictor.model_best
+
+
+
+    print()
+
+    print(
+
+        "Mejor modelo:"
+
+    )
+
+    print(best_model)
+
+
+
+    mlflow.log_param(
+
+        "best_model",
+
+        best_model
+
+    )
+
+
+
+
+    # -------------------------------------------------
+    # Evaluación
+    # -------------------------------------------------
+
+
+    performance = predictor.evaluate(
+
+        test
+
+    )
+
+
+
+    print()
+
+    print(performance)
+
+
+
+
+    accuracy = performance[
+
+        "accuracy"
+
+    ]
+
+
+
+    # -------------------------------------------------
+    # Registrar métricas MLflow
+    # -------------------------------------------------
+
+
+    mlflow.log_metric(
+
+        "accuracy",
+
+        accuracy
+
+    )
+
+
+    mlflow.log_metric(
+
+        "training_time_seconds",
+
+        training_time
+
+    )
+
+
+
+    # -------------------------------------------------
+    # Guardar predictor
+    # -------------------------------------------------
+
+
+    predictor.save()
+
+
+
+    print()
+
+    print(
+
+        "Modelo guardado correctamente."
+
+    )
+
+
+
+    # -------------------------------------------------
+    # Crear ZIP modelo
+    # -------------------------------------------------
+
+
+    shutil.make_archive(
+
+        "TitanicModel",
+
+        "zip",
+
+        predictor.path
+
+    )
+
+
+
+    print(
+
+        "TitanicModel.zip generado."
+
+    )
+
+
+
+    # -------------------------------------------------
+    # Registrar artefacto MLflow
+    # -------------------------------------------------
+
+
+    mlflow.log_artifact(
+
+        "TitanicModel.zip"
+
+    )
+
+
+
+    print(
+
+        "Artefacto registrado en MLflow."
+
+    )
+
+
+
+    # -------------------------------------------------
+    # Información final del Run
+    # -------------------------------------------------
+
+
+    print()
+
+    print("==============================")
+
+    print("MLFLOW RUN FINALIZADO")
+
+    print("==============================")
+
+    print()
+
+    print(
+
+        "Run ID:",
+
+        mlflow.active_run().info.run_id
+
+    )
 
 
 
 # =====================================================
-# GUARDAR MODELO
-# =====================================================
-
-
-print(
-
-    "\nGuardando predictor..."
-
-)
-
-
-
-predictor.save()
-
-
-
-print(
-
-    "Modelo guardado correctamente"
-
-)
-
-
-
-# =====================================================
-# COMPRIMIR MODELO
-# =====================================================
-
-
-print(
-
-    "\nGenerando archivo TitanicModel.zip..."
-
-)
-
-
-
-shutil.make_archive(
-
-    "TitanicModel",
-
-    "zip",
-
-    predictor.path
-
-)
-
-
-
-print(
-
-    "Archivo TitanicModel.zip creado"
-
-)
-
-
-
-# =====================================================
-# DESCARGAR MODELO (COLAB)
+# DESCARGA PARA COLAB
 # =====================================================
 
 
 files.download(
 
     "TitanicModel.zip"
-
-)
-
-
-
-print(
-
-    "\nProceso terminado correctamente"
 
 )
