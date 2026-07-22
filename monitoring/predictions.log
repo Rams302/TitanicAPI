@@ -1,1 +1,32 @@
+======================================================================
 
+{
+    "timestamp": "2026-07-21T21:30:12",
+
+    "execution_id": 1,
+
+    "request_id": "8f2d-1234",
+
+    "event_type": "MODEL_PREDICTION",
+
+    "status": "SUCCESS",
+
+    "input_data": {
+        "Pclass":1,
+        "Sex":"female",
+        "Age":25
+    },
+
+    "model_response":1,
+
+    "performance":{
+        "latency_seconds":0.421
+    },
+
+    "monitoring":{
+        "alert_level":"INFO",
+        "alerts":[]
+    }
+}
+
+======================================================================
