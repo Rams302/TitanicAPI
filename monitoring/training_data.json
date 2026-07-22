@@ -1,0 +1,55 @@
+{
+    "dataset": "Titanic Dataset",
+    "model": "TitanicAutoML",
+    "version": "1.0",
+
+    "features": {
+
+        "Pclass": {
+            "type": "integer",
+            "allowed_values": [1, 2, 3]
+        },
+
+        "Sex": {
+            "type": "string",
+            "allowed_values": [
+                "male",
+                "female"
+            ]
+        },
+
+        "Age": {
+            "type": "float",
+            "min": 0,
+            "max": 100
+        },
+
+        "SibSp": {
+            "type": "integer",
+            "min": 0,
+            "max": 10
+        },
+
+        "Parch": {
+            "type": "integer",
+            "min": 0,
+            "max": 10
+        },
+
+        "Fare": {
+            "type": "float",
+            "min": 0,
+            "max": 600
+        },
+
+        "Embarked": {
+            "type": "string",
+            "allowed_values": [
+                "S",
+                "C",
+                "Q"
+            ]
+        }
+
+    }
+}
