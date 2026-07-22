@@ -1,408 +1,497 @@
-{
-  "nbformat": 4,
-  "nbformat_minor": 0,
-  "metadata": {
-    "colab": {
-      "provenance": [],
-      "gpuType": "T4",
-      "authorship_tag": "ABX9TyNSZvn0mJjepJ56Rm/yMceO",
-      "include_colab_link": true
-    },
-    "kernelspec": {
-      "name": "python3",
-      "display_name": "Python 3"
-    },
-    "language_info": {
-      "name": "python"
-    },
-    "accelerator": "GPU"
-  },
-  "cells": [
-    {
-      "cell_type": "markdown",
-      "metadata": {
-        "id": "view-in-github",
-        "colab_type": "text"
-      },
-      "source": [
-        "<a href=\"https://colab.research.google.com/github/Rams302/TitanicAPI/blob/main/monitoring/monitor.py\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
-      ]
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "# ==========================================================\n",
-        "# Monitoring Engine\n",
-        "# TitanicAPI MLOps\n",
-        "# ==========================================================\n",
-        "\n",
-        "\n",
-        "from __future__ import annotations\n",
-        "\n",
-        "\n",
-        "import os\n",
-        "\n",
-        "import json\n",
-        "\n",
-        "from datetime import datetime\n",
-        "\n",
-        "from statistics import mean\n",
-        "\n",
-        "\n",
-        "\n",
-        "class ModelMonitor:\n",
-        "\n",
-        "\n",
-        "    def __init__(self):\n",
-        "\n",
-        "\n",
-        "        self.log_file = (\n",
-        "\n",
-        "            \"monitoring/predictions.log\"\n",
-        "\n",
-        "        )\n",
-        "\n",
-        "\n",
-        "        self.metrics_file = (\n",
-        "\n",
-        "            \"monitoring/current_model_metrics.json\"\n",
-        "\n",
-        "        )\n",
-        "\n",
-        "\n",
-        "        self.history_file = (\n",
-        "\n",
-        "            \"monitoring/metrics_history.json\"\n",
-        "\n",
-        "        )\n",
-        "\n",
-        "\n",
-        "\n",
-        "    # ------------------------------------------------------\n",
-        "    # Leer configuración\n",
-        "    # ------------------------------------------------------\n",
-        "\n",
-        "    def load_metrics_config(self):\n",
-        "\n",
-        "\n",
-        "        with open(\n",
-        "\n",
-        "            self.metrics_file,\n",
-        "\n",
-        "            \"r\",\n",
-        "\n",
-        "            encoding=\"utf-8\"\n",
-        "\n",
-        "        ) as file:\n",
-        "\n",
-        "\n",
-        "            return json.load(file)\n",
-        "\n",
-        "\n",
-        "\n",
-        "    # ------------------------------------------------------\n",
-        "    # Generar ID ejecución\n",
-        "    # ------------------------------------------------------\n",
-        "\n",
-        "    def execution_number(self):\n",
-        "\n",
-        "\n",
-        "        if not os.path.exists(\n",
-        "\n",
-        "            self.history_file\n",
-        "\n",
-        "        ):\n",
-        "\n",
-        "            return 1\n",
-        "\n",
-        "\n",
-        "\n",
-        "        with open(\n",
-        "\n",
-        "            self.history_file,\n",
-        "\n",
-        "            \"r\",\n",
-        "\n",
-        "            encoding=\"utf-8\"\n",
-        "\n",
-        "        ) as file:\n",
-        "\n",
-        "\n",
-        "            data=json.load(file)\n",
-        "\n",
-        "\n",
-        "\n",
-        "        return len(data)+1\n",
-        "\n",
-        "\n",
-        "\n",
-        "    # ------------------------------------------------------\n",
-        "    # Evaluación individual\n",
-        "    # ------------------------------------------------------\n",
-        "\n",
-        "    def evaluate_latency(self, latency):\n",
-        "\n",
-        "\n",
-        "        config = self.load_metrics_config()\n",
-        "\n",
-        "\n",
-        "        limit = (\n",
-        "\n",
-        "            config[\"thresholds\"]\n",
-        "\n",
-        "            [\"max_latency_seconds\"]\n",
-        "\n",
-        "        )\n",
-        "\n",
-        "\n",
-        "\n",
-        "        if latency > limit:\n",
-        "\n",
-        "\n",
-        "            return (\n",
-        "\n",
-        "                \"EXCEEDED\",\n",
-        "\n",
-        "                f\"ADVERTENCIA: latencia superior al límite de {limit} segundos\"\n",
-        "\n",
-        "            )\n",
-        "\n",
-        "\n",
-        "\n",
-        "        return (\n",
-        "\n",
-        "            \"NORMAL\",\n",
-        "\n",
-        "            None\n",
-        "\n",
-        "        )\n",
-        "\n",
-        "\n",
-        "\n",
-        "    # ------------------------------------------------------\n",
-        "    # Crear log\n",
-        "    # ------------------------------------------------------\n",
-        "\n",
-        "    def write_prediction_log(\n",
-        "\n",
-        "        self,\n",
-        "\n",
-        "        request_id,\n",
-        "\n",
-        "        input_data,\n",
-        "\n",
-        "        prediction,\n",
-        "\n",
-        "        latency,\n",
-        "\n",
-        "        status\n",
-        "\n",
-        "    ):\n",
-        "\n",
-        "\n",
-        "\n",
-        "        execution = self.execution_number()\n",
-        "\n",
-        "\n",
-        "\n",
-        "        latency_status, alert = (\n",
-        "\n",
-        "            self.evaluate_latency(latency)\n",
-        "\n",
-        "        )\n",
-        "\n",
-        "\n",
-        "\n",
-        "        log = {\n",
-        "\n",
-        "\n",
-        "            \"timestamp\":\n",
-        "\n",
-        "            datetime.now().isoformat(),\n",
-        "\n",
-        "\n",
-        "            \"execution_id\":\n",
-        "\n",
-        "            execution,\n",
-        "\n",
-        "\n",
-        "            \"request_id\":\n",
-        "\n",
-        "            request_id,\n",
-        "\n",
-        "\n",
-        "            \"event_type\":\n",
-        "\n",
-        "            \"MODEL_PREDICTION\",\n",
-        "\n",
-        "\n",
-        "            \"status\":\n",
-        "\n",
-        "            status,\n",
-        "\n",
-        "\n",
-        "            \"input_data\":\n",
-        "\n",
-        "            input_data,\n",
-        "\n",
-        "\n",
-        "            \"model_response\":\n",
-        "\n",
-        "            prediction,\n",
-        "\n",
-        "\n",
-        "            \"performance\":\n",
-        "\n",
-        "            {\n",
-        "\n",
-        "\n",
-        "                \"latency_seconds\":\n",
-        "\n",
-        "                latency\n",
-        "\n",
-        "            },\n",
-        "\n",
-        "\n",
-        "            \"monitoring\":\n",
-        "\n",
-        "            {\n",
-        "\n",
-        "\n",
-        "                \"latency_status\":\n",
-        "\n",
-        "                latency_status,\n",
-        "\n",
-        "\n",
-        "                \"alert\":\n",
-        "\n",
-        "                alert\n",
-        "\n",
-        "            }\n",
-        "\n",
-        "\n",
-        "        }\n",
-        "\n",
-        "\n",
-        "\n",
-        "        with open(\n",
-        "\n",
-        "            self.log_file,\n",
-        "\n",
-        "            \"a\",\n",
-        "\n",
-        "            encoding=\"utf-8\"\n",
-        "\n",
-        "        ) as file:\n",
-        "\n",
-        "\n",
-        "            file.write(\n",
-        "\n",
-        "                \"\\n\"\n",
-        "\n",
-        "                + \"=\"*70\n",
-        "\n",
-        "                + \"\\n\"\n",
-        "\n",
-        "            )\n",
-        "\n",
-        "\n",
-        "            file.write(\n",
-        "\n",
-        "                json.dumps(\n",
-        "\n",
-        "                    log,\n",
-        "\n",
-        "                    indent=4,\n",
-        "\n",
-        "                    ensure_ascii=False\n",
-        "\n",
-        "                )\n",
-        "\n",
-        "            )\n",
-        "\n",
-        "\n",
-        "\n",
-        "            file.write(\n",
-        "\n",
-        "                \"\\n\"\n",
-        "\n",
-        "                + \"=\"*70\n",
-        "\n",
-        "                + \"\\n\"\n",
-        "\n",
-        "            )\n",
-        "\n",
-        "\n",
-        "\n",
-        "        self.save_history(log)\n",
-        "\n",
-        "\n",
-        "\n",
-        "    # ------------------------------------------------------\n",
-        "    # Guardar histórico\n",
-        "    # ------------------------------------------------------\n",
-        "\n",
-        "    def save_history(self, log):\n",
-        "\n",
-        "\n",
-        "        history=[]\n",
-        "\n",
-        "\n",
-        "\n",
-        "        if os.path.exists(\n",
-        "\n",
-        "            self.history_file\n",
-        "\n",
-        "        ):\n",
-        "\n",
-        "\n",
-        "            with open(\n",
-        "\n",
-        "                self.history_file,\n",
-        "\n",
-        "                \"r\",\n",
-        "\n",
-        "                encoding=\"utf-8\"\n",
-        "\n",
-        "            ) as file:\n",
-        "\n",
-        "\n",
-        "                history=json.load(file)\n",
-        "\n",
-        "\n",
-        "\n",
-        "        history.append(log)\n",
-        "\n",
-        "\n",
-        "\n",
-        "        with open(\n",
-        "\n",
-        "            self.history_file,\n",
-        "\n",
-        "            \"w\",\n",
-        "\n",
-        "            encoding=\"utf-8\"\n",
-        "\n",
-        "        ) as file:\n",
-        "\n",
-        "\n",
-        "            json.dump(\n",
-        "\n",
-        "                history,\n",
-        "\n",
-        "                file,\n",
-        "\n",
-        "                indent=4,\n",
-        "\n",
-        "                ensure_ascii=False\n",
-        "\n",
-        "            )"
-      ],
-      "metadata": {
-        "id": "cqwLfUwSfCP3"
-      },
-      "execution_count": null,
-      "outputs": []
-    }
-  ]
-}
+# ==========================================================
+# MONITORING ENGINE - TITANIC API
+# MLOps Monitoring + Logs + Alerts
+# ==========================================================
+
+
+from __future__ import annotations
+
+
+import os
+
+import json
+
+from datetime import datetime
+
+
+
+class ModelMonitor:
+
+
+    def __init__(self):
+
+
+        self.log_file = (
+
+            "monitoring/predictions.log"
+
+        )
+
+
+        self.metrics_file = (
+
+            "monitoring/current_model_metrics.json"
+
+        )
+
+
+        self.history_file = (
+
+            "monitoring/metrics_history.json"
+
+        )
+
+
+
+    # ------------------------------------------------------
+    # Leer configuración de umbrales
+    # ------------------------------------------------------
+
+    def load_configuration(self):
+
+
+        with open(
+
+            self.metrics_file,
+
+            "r",
+
+            encoding="utf-8"
+
+        ) as file:
+
+
+            return json.load(file)
+
+
+
+    # ------------------------------------------------------
+    # Obtener número de ejecución
+    # ------------------------------------------------------
+
+    def get_execution_id(self):
+
+
+        if not os.path.exists(
+
+            self.history_file
+
+        ):
+
+            return 1
+
+
+
+        with open(
+
+            self.history_file,
+
+            "r",
+
+            encoding="utf-8"
+
+        ) as file:
+
+
+            history = json.load(file)
+
+
+
+        return len(history) + 1
+
+
+
+    # ------------------------------------------------------
+    # Evaluar métricas contra umbrales
+    # ------------------------------------------------------
+
+    def evaluate_metrics(
+
+        self,
+
+        latency,
+
+        status
+
+    ):
+
+
+        config = self.load_configuration()
+
+
+        thresholds = config["thresholds"]
+
+
+
+        alerts = []
+
+
+
+        alert_level = "INFO"
+
+
+
+        # -------------------------------
+        # Validación latencia
+        # -------------------------------
+
+        if latency > thresholds[
+
+            "max_latency_seconds"
+
+        ]:
+
+
+            alerts.append(
+
+                "ADVERTENCIA: la latencia superó el umbral permitido."
+
+            )
+
+
+            alert_level = "WARNING"
+
+
+
+        # -------------------------------
+        # Validación errores
+        # -------------------------------
+
+        if status == "ERROR":
+
+
+            alerts.append(
+
+                "CRÍTICO: error durante la ejecución del modelo."
+
+            )
+
+
+            alert_level = "CRITICAL"
+
+
+
+        return {
+
+
+            "alert_level":
+
+            alert_level,
+
+
+            "alerts":
+
+            alerts
+
+        }
+
+
+
+    # ------------------------------------------------------
+    # Generar archivo predictions.log
+    # ------------------------------------------------------
+
+    def write_prediction_log(
+
+        self,
+
+        request_id,
+
+        input_data,
+
+        prediction,
+
+        latency,
+
+        status
+
+    ):
+
+
+
+        execution_id = self.get_execution_id()
+
+
+
+        monitoring_status = self.evaluate_metrics(
+
+            latency,
+
+            status
+
+        )
+
+
+
+        log_entry = {
+
+
+
+            "timestamp":
+
+            datetime.now().isoformat(),
+
+
+
+            "execution_id":
+
+            execution_id,
+
+
+
+            "request_id":
+
+            request_id,
+
+
+
+            "event_type":
+
+            "MODEL_PREDICTION",
+
+
+
+            "status":
+
+            status,
+
+
+
+            "input_data":
+
+            input_data,
+
+
+
+            "model_response":
+
+            prediction,
+
+
+
+            "performance":
+
+            {
+
+
+                "latency_seconds":
+
+                latency
+
+
+            },
+
+
+
+            "monitoring":
+
+            {
+
+
+                "alert_level":
+
+                monitoring_status["alert_level"],
+
+
+
+                "alerts":
+
+                monitoring_status["alerts"]
+
+
+            }
+
+
+        }
+
+
+
+        # Crear archivo si no existe
+
+        os.makedirs(
+
+            "monitoring",
+
+            exist_ok=True
+
+        )
+
+
+
+        with open(
+
+            self.log_file,
+
+            "a",
+
+            encoding="utf-8"
+
+        ) as file:
+
+
+            file.write(
+
+                "\n"
+
+                + "=" * 70
+
+                + "\n"
+
+            )
+
+
+            file.write(
+
+                json.dumps(
+
+                    log_entry,
+
+                    indent=4,
+
+                    ensure_ascii=False
+
+                )
+
+            )
+
+
+            file.write(
+
+                "\n"
+
+                + "=" * 70
+
+                + "\n"
+
+            )
+
+
+
+        # Guardar histórico para dashboard
+
+        self.save_metrics_history(
+
+            log_entry
+
+        )
+
+
+
+    # ------------------------------------------------------
+    # Guardar métricas históricas
+    # ------------------------------------------------------
+
+    def save_metrics_history(
+
+        self,
+
+        log_entry
+
+    ):
+
+
+        history = []
+
+
+
+        if os.path.exists(
+
+            self.history_file
+
+        ):
+
+
+
+            with open(
+
+                self.history_file,
+
+                "r",
+
+                encoding="utf-8"
+
+            ) as file:
+
+
+                history = json.load(file)
+
+
+
+        history_record = {
+
+
+
+            "execution_id":
+
+            log_entry["execution_id"],
+
+
+
+            "timestamp":
+
+            log_entry["timestamp"],
+
+
+
+            "status":
+
+            log_entry["status"],
+
+
+
+            "latency_seconds":
+
+            log_entry["performance"]
+
+            ["latency_seconds"],
+
+
+
+            "alert_level":
+
+            log_entry["monitoring"]
+
+            ["alert_level"],
+
+
+
+            "alerts":
+
+            log_entry["monitoring"]
+
+            ["alerts"]
+
+        }
+
+
+
+        history.append(
+
+            history_record
+
+        )
+
+
+
+        with open(
+
+            self.history_file,
+
+            "w",
+
+            encoding="utf-8"
+
+        ) as file:
+
+
+            json.dump(
+
+                history,
+
+                file,
+
+                indent=4,
+
+                ensure_ascii=False
+
+            )
