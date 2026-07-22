@@ -19,11 +19,14 @@
 
     "alerts": {
 
-        "latency_warning": "ADVERTENCIA: la latencia superó el umbral permitido.",
+        "latency_warning":
+        "ADVERTENCIA: la latencia superó el umbral permitido.",
 
-        "error_warning": "CRÍTICO: error durante la ejecución del modelo.",
+        "error_warning":
+        "CRÍTICO: error durante la ejecución del modelo.",
 
-        "invalid_data_warning": "ADVERTENCIA: demasiadas solicitudes contienen datos invalidos."
+        "invalid_data_warning":
+        "ADVERTENCIA: demasiadas solicitudes contienen datos invalidos."
 
     }
 }
