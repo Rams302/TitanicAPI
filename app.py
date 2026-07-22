@@ -1,25 +1,19 @@
 # ==========================================================
 # API REST - TITANIC DATASET
-# AutoGluon + FastAPI + MLOps Monitoring
+# AutoGluon + FastAPI + Monitoring MLOps
 # ==========================================================
 
-
 from fastapi import FastAPI
-
 from pydantic import BaseModel
 
 import pandas as pd
 
 import time
-
 import uuid
-
 
 from autogluon.tabular import TabularPredictor
 
-
 from monitoring.monitor import ModelMonitor
-
 
 
 # ----------------------------------------------------------
@@ -27,26 +21,17 @@ from monitoring.monitor import ModelMonitor
 # ----------------------------------------------------------
 
 app = FastAPI(
-
     title="Titanic Prediction API",
-
-    description=
-    "Predicción de supervivencia utilizando AutoGluon con monitoreo MLOps",
-
+    description="Predicción de supervivencia utilizando AutoGluon con monitoreo MLOps",
     version="1.1"
-
 )
-
 
 
 # ----------------------------------------------------------
 # Cargar modelo entrenado
 # ----------------------------------------------------------
 
-predictor = TabularPredictor.load(
-    "TitanicModel"
-)
-
+predictor = TabularPredictor.load("TitanicModel")
 
 
 # ----------------------------------------------------------
@@ -56,7 +41,6 @@ predictor = TabularPredictor.load(
 monitor = ModelMonitor()
 
 
-
 # ----------------------------------------------------------
 # Modelo de entrada
 # ----------------------------------------------------------
@@ -64,19 +48,12 @@ monitor = ModelMonitor()
 class Passenger(BaseModel):
 
     Pclass: int
-
     Sex: str
-
     Age: float
-
     SibSp: int
-
     Parch: int
-
     Fare: float
-
     Embarked: str
-
 
 
 # ----------------------------------------------------------
@@ -87,15 +64,9 @@ class Passenger(BaseModel):
 def home():
 
     return {
-
-        "mensaje":
-        "Titanic Prediction API",
-
-        "monitoring":
-        "enabled"
-
+        "mensaje": "Titanic Prediction API",
+        "monitoring": "enabled"
     }
-
 
 
 # ----------------------------------------------------------
@@ -106,12 +77,8 @@ def home():
 def health():
 
     return {
-
-        "status":
-        "OK"
-
+        "status": "OK"
     }
-
 
 
 # ----------------------------------------------------------
@@ -122,18 +89,10 @@ def health():
 def info():
 
     return {
-
-        "modelo":
-        predictor.model_best,
-
-        "framework":
-        "AutoGluon",
-
-        "objetivo":
-        "Survived"
-
+        "modelo": predictor.model_best,
+        "framework": "AutoGluon",
+        "objetivo": "Survived"
     }
-
 
 
 # ----------------------------------------------------------
@@ -144,44 +103,64 @@ def info():
 def predict(passenger: Passenger):
 
 
-    request_id = str(
-        uuid.uuid4()
-    )
+    # ------------------------------------------------------
+    # Identificador único de la petición
+    # ------------------------------------------------------
 
+    request_id = str(uuid.uuid4())
+
+
+    # ------------------------------------------------------
+    # Inicio del contador de latencia
+    # ------------------------------------------------------
 
     start_time = time.time()
 
 
-    status = "SUCCESS"
+    # ------------------------------------------------------
+    # Valores iniciales
+    # ------------------------------------------------------
 
+    status = "SUCCESS"
 
     resultado = None
 
+    probabilidades_resultado = None
+
+
+    # ------------------------------------------------------
+    # Predicción del modelo
+    # ------------------------------------------------------
 
     try:
 
+        # Convertir el JSON recibido en DataFrame
 
         datos = pd.DataFrame(
-            [passenger.dict()]
+            [passenger.model_dump()]
         )
 
 
-        prediccion = predictor.predict(
-            datos
-        )
+        # Ejecutar predicción
 
+        prediccion = predictor.predict(datos)
+
+
+        # Obtener probabilidades
 
         probabilidades = predictor.predict_proba(
             datos
         )
 
 
-        resultado = {
+        # Guardar resultados
+
+        resultado = int(
+            prediccion.iloc[0]
+        )
 
 
-            "prediction":
-            int(prediccion.iloc[0]),
-
+        probabilidades_resultado = {
 
             "probabilidad_no_sobrevive":
             float(probabilidades.iloc[0][0]),
@@ -193,73 +172,91 @@ def predict(passenger: Passenger):
         }
 
 
-
     except Exception as error:
-
 
         status = "ERROR"
 
+        resultado = str(error)
 
-        resultado = {
+
+    # ------------------------------------------------------
+    # Calcular latencia
+    # ------------------------------------------------------
+
+    latency = round(
+        time.time() - start_time,
+        4
+    )
 
 
-            "error":
-            str(error)
+    # ------------------------------------------------------
+    # Registrar información para monitoreo
+    # ------------------------------------------------------
+
+    monitor.write_prediction_log(
+
+        request_id=request_id,
+
+        input_data=passenger.model_dump(),
+
+        prediction=resultado,
+
+        latency=latency,
+
+        status=status
+
+    )
+
+
+    # ------------------------------------------------------
+    # Respuesta cuando existe un error
+    # ------------------------------------------------------
+
+    if status == "ERROR":
+
+        return {
+
+            "request_id":
+            request_id,
+
+            "status":
+            status,
+
+            "latency_seconds":
+            latency,
+
+            "detail":
+            resultado
 
         }
 
 
-
-    finally:
-
-
-        latency = round(
-
-            time.time()
-            -
-            start_time,
-
-            4
-
-        )
-
-
-        monitor.write_prediction_log(
-
-            request_id=request_id,
-
-            input_data=passenger.dict(),
-
-            prediction=resultado,
-
-            latency=latency,
-
-            status=status
-
-        )
-
-
+    # ------------------------------------------------------
+    # Respuesta exitosa
+    # ------------------------------------------------------
 
     return {
 
-
         "request_id":
-
         request_id,
 
+        "prediction":
+        resultado,
 
-        "status":
+        "probabilidad_no_sobrevive":
+        probabilidades_resultado[
+            "probabilidad_no_sobrevive"
+        ],
 
-        status,
-
+        "probabilidad_sobrevive":
+        probabilidades_resultado[
+            "probabilidad_sobrevive"
+        ],
 
         "latency_seconds":
-
         latency,
 
-
-        "result":
-
-        resultado
+        "status":
+        status
 
     }
