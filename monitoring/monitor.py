@@ -15,13 +15,12 @@ from datetime import datetime
 
 
 
+
 class ModelMonitor:
 
 
     def __init__(self):
 
-
-        # Archivo de logs detallados
 
         self.log_file = (
 
@@ -30,8 +29,6 @@ class ModelMonitor:
         )
 
 
-        # Configuración de umbrales
-
         self.metrics_file = (
 
             "monitoring/current_model_metrics.json"
@@ -39,16 +36,12 @@ class ModelMonitor:
         )
 
 
-        # Datos base del entrenamiento
-
         self.training_file = (
 
             "monitoring/training_data.json"
 
         )
 
-
-        # Histórico utilizado por dashboard
 
         self.history_file = (
 
@@ -63,6 +56,43 @@ class ModelMonitor:
     # ======================================================
 
     def load_configuration(self):
+
+
+        if not os.path.exists(
+
+            self.metrics_file
+
+        ):
+
+
+            return {
+
+                "thresholds": {
+
+                    "max_latency_seconds":0.5,
+
+                    "min_confidence":0.60
+
+                },
+
+                "alerts": {
+
+                    "latency_warning":
+                    "ALERTA: latencia superior al límite permitido",
+
+                    "error_warning":
+                    "ALERTA: error durante la ejecución del modelo",
+
+                    "invalid_data_warning":
+                    "ADVERTENCIA: demasiadas solicitudes contienen datos inválidos",
+
+                    "confidence_warning":
+                    "ALERTA: baja confianza en la predicción del modelo"
+
+                }
+
+            }
+
 
 
         with open(
@@ -81,10 +111,25 @@ class ModelMonitor:
 
 
     # ======================================================
-    # Leer información del entrenamiento
+    # Leer datos entrenamiento
     # ======================================================
 
     def load_training_data(self):
+
+
+        if not os.path.exists(
+
+            self.training_file
+
+        ):
+
+
+            return {
+
+                "features": {}
+
+            }
+
 
 
         with open(
@@ -103,7 +148,7 @@ class ModelMonitor:
 
 
     # ======================================================
-    # Obtener número de ejecución
+    # Obtener número ejecución
     # ======================================================
 
     def get_execution_id(self):
@@ -114,6 +159,7 @@ class ModelMonitor:
             self.history_file
 
         ):
+
 
             return 1
 
@@ -134,12 +180,12 @@ class ModelMonitor:
 
 
 
-        return len(history) + 1
+        return len(history)+1
 
 
 
     # ======================================================
-    # Validación de datos de entrada
+    # Validación datos entrada
     # ======================================================
 
     def validate_input_data(
@@ -154,7 +200,13 @@ class ModelMonitor:
         training = self.load_training_data()
 
 
-        features = training["features"]
+        features = training.get(
+
+            "features",
+
+            {}
+
+        )
 
 
         errors = []
@@ -163,8 +215,6 @@ class ModelMonitor:
 
         for field, rules in features.items():
 
-
-            # Validar existencia del campo
 
             if field not in input_data:
 
@@ -175,6 +225,7 @@ class ModelMonitor:
 
                 )
 
+
                 continue
 
 
@@ -183,14 +234,16 @@ class ModelMonitor:
 
 
 
-            # ----------------------------------------------
-            # Validación enteros
-            # ----------------------------------------------
-
             if rules["type"] == "integer":
 
 
-                if not isinstance(value, int):
+                if not isinstance(
+
+                    value,
+
+                    int
+
+                ):
 
 
                     errors.append(
@@ -201,52 +254,14 @@ class ModelMonitor:
 
 
 
-                elif (
-
-                    "min" in rules
-
-                    and value < rules["min"]
-
-                ):
-
-
-                    errors.append(
-
-                        f"{field} menor al mínimo permitido"
-
-                    )
-
-
-
-                elif (
-
-                    "max" in rules
-
-                    and value > rules["max"]
-
-                ):
-
-
-                    errors.append(
-
-                        f"{field} mayor al máximo permitido"
-
-                    )
-
-
-
-            # ----------------------------------------------
-            # Validación flotantes
-            # ----------------------------------------------
-
-            if rules["type"] == "float":
+            elif rules["type"] == "float":
 
 
                 if not isinstance(
 
                     value,
 
-                    (int, float)
+                    (int,float)
 
                 ):
 
@@ -258,492 +273,25 @@ class ModelMonitor:
                     )
 
 
-                elif (
 
-                    value < rules["min"]
+            elif rules["type"] == "string":
 
-                    or
 
-                    value > rules["max"]
+                if value not in rules.get(
+
+                    "allowed_values",
+
+                    []
 
                 ):
 
 
                     errors.append(
 
-                        f"{field} fuera de rango permitido"
-
-                    )
-
-
-
-            # ----------------------------------------------
-            # Validación strings
-            # ----------------------------------------------
-
-            if rules["type"] == "string":
-
-
-                if value not in rules["allowed_values"]:
-
-
-                    errors.append(
-
-                        f"{field} tiene un valor inválido"
+                        f"{field} tiene valor inválido"
 
                     )
 
 
 
         return errors
-
-
-
-    # ======================================================
-    # Evaluación de métricas y generación de alertas
-    # ======================================================
-
-    def evaluate_metrics(
-
-        self,
-
-        latency,
-
-        status,
-
-        input_data
-
-    ):
-
-
-        config = self.load_configuration()
-
-
-        thresholds = config["thresholds"]
-
-
-        alerts = []
-
-
-        alert_level = "INFO"
-
-
-
-        # ----------------------------------------------
-        # Validación de latencia
-        # ----------------------------------------------
-
-        if latency > thresholds["max_latency_seconds"]:
-
-
-            alerts.append(
-
-                config["alerts"]["latency_warning"]
-
-            )
-
-
-            alert_level = "WARNING"
-
-
-
-        # ----------------------------------------------
-        # Validación de errores
-        # ----------------------------------------------
-
-        if status == "ERROR":
-
-
-            alerts.append(
-
-                config["alerts"]["error_warning"]
-
-            )
-
-
-            alert_level = "CRITICAL"
-
-
-
-        # ----------------------------------------------
-        # Validación calidad de datos
-        # ----------------------------------------------
-
-        validation_errors = self.validate_input_data(
-
-            input_data
-
-        )
-
-
-        if len(validation_errors) > 0:
-
-
-            alerts.append(
-
-                config["alerts"]
-
-                ["invalid_data_warning"]
-
-            )
-
-
-            alert_level = "WARNING"
-
-
-
-        return {
-
-
-            "alert_level":
-
-            alert_level,
-
-
-            "alerts":
-
-            alerts,
-
-
-            "validation_errors":
-
-            validation_errors
-
-        }
-
-
-
-    # ======================================================
-    # Crear registro de predicción
-    # ======================================================
-
-    def write_prediction_log(
-
-        self,
-
-        request_id,
-
-        input_data,
-
-        prediction,
-
-        latency,
-
-        status
-
-    ):
-
-
-
-        execution_id = self.get_execution_id()
-
-
-
-        monitoring_status = self.evaluate_metrics(
-
-            latency,
-
-            status,
-
-            input_data
-
-        )
-
-
-
-        log_entry = {
-
-
-
-            "timestamp":
-
-            datetime.now().isoformat(),
-
-
-
-            "execution_id":
-
-            execution_id,
-
-
-
-            "request_id":
-
-            request_id,
-
-
-
-            "event_type":
-
-            "MODEL_PREDICTION",
-
-
-
-            "status":
-
-            status,
-
-
-
-            "input_data":
-
-            input_data,
-
-
-
-            "model_response":
-
-            prediction,
-
-
-
-            "performance":
-
-            {
-
-
-                "latency_seconds":
-
-                latency
-
-
-            },
-
-
-
-            "monitoring":
-
-            {
-
-
-                "alert_level":
-
-                monitoring_status["alert_level"],
-
-
-
-                "alerts":
-
-                monitoring_status["alerts"],
-
-
-
-                "validation_errors":
-
-                monitoring_status["validation_errors"]
-
-
-            }
-
-
-        }
-
-
-
-        # Crear carpeta si no existe
-
-        os.makedirs(
-
-            "monitoring",
-
-            exist_ok=True
-
-        )
-
-
-
-        # ----------------------------------------------
-        # Guardar log detallado
-        # ----------------------------------------------
-
-        with open(
-
-            self.log_file,
-
-            "a",
-
-            encoding="utf-8"
-
-        ) as file:
-
-
-            file.write(
-
-                "\n"
-
-                + "=" * 70
-
-                + "\n"
-
-            )
-
-
-            file.write(
-
-                json.dumps(
-
-                    log_entry,
-
-                    indent=4,
-
-                    ensure_ascii=False
-
-                )
-
-            )
-
-
-            file.write(
-
-                "\n"
-
-                + "=" * 70
-
-                + "\n"
-
-            )
-
-
-
-        # Guardar histórico
-
-        self.save_metrics_history(
-
-            log_entry
-
-        )
-
-
-
-    # ======================================================
-    # Guardar histórico para Dashboard
-    # ======================================================
-
-    def save_metrics_history(
-
-        self,
-
-        log_entry
-
-    ):
-
-
-
-        history = []
-
-
-
-        if os.path.exists(
-
-            self.history_file
-
-        ):
-
-
-
-            with open(
-
-                self.history_file,
-
-                "r",
-
-                encoding="utf-8"
-
-            ) as file:
-
-
-                history = json.load(file)
-
-
-
-        history_record = {
-
-
-
-            "execution_id":
-
-            log_entry["execution_id"],
-
-
-
-            "timestamp":
-
-            log_entry["timestamp"],
-
-
-
-            "status":
-
-            log_entry["status"],
-
-
-
-            "latency_seconds":
-
-            log_entry["performance"]
-
-            ["latency_seconds"],
-
-
-
-            "alert_level":
-
-            log_entry["monitoring"]
-
-            ["alert_level"],
-
-
-
-            "alerts":
-
-            log_entry["monitoring"]
-
-            ["alerts"],
-
-
-
-            "invalid_data":
-
-            len(
-
-                log_entry["monitoring"]
-
-                ["validation_errors"]
-
-            ) > 0
-
-
-        }
-
-
-
-        history.append(
-
-            history_record
-
-        )
-
-
-
-        with open(
-
-            self.history_file,
-
-            "w",
-
-            encoding="utf-8"
-
-        ) as file:
-
-
-            json.dump(
-
-                history,
-
-                file,
-
-                indent=4,
-
-                ensure_ascii=False
-
-            )
