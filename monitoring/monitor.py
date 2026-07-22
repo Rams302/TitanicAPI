@@ -1,6 +1,6 @@
 # ==========================================================
 # MONITORING ENGINE - TITANIC API
-# MLOps Monitoring + Logs + Alerts
+# MLOps Monitoring + Logs + Alerts + Data Validation
 # ==========================================================
 
 
@@ -21,6 +21,8 @@ class ModelMonitor:
     def __init__(self):
 
 
+        # Archivo de logs detallados
+
         self.log_file = (
 
             "monitoring/predictions.log"
@@ -28,12 +30,25 @@ class ModelMonitor:
         )
 
 
+        # Configuración de umbrales
+
         self.metrics_file = (
 
             "monitoring/current_model_metrics.json"
 
         )
 
+
+        # Datos base del entrenamiento
+
+        self.training_file = (
+
+            "monitoring/training_data.json"
+
+        )
+
+
+        # Histórico utilizado por dashboard
 
         self.history_file = (
 
@@ -43,9 +58,9 @@ class ModelMonitor:
 
 
 
-    # ------------------------------------------------------
-    # Leer configuración de umbrales
-    # ------------------------------------------------------
+    # ======================================================
+    # Leer configuración de métricas
+    # ======================================================
 
     def load_configuration(self):
 
@@ -65,9 +80,31 @@ class ModelMonitor:
 
 
 
-    # ------------------------------------------------------
+    # ======================================================
+    # Leer información del entrenamiento
+    # ======================================================
+
+    def load_training_data(self):
+
+
+        with open(
+
+            self.training_file,
+
+            "r",
+
+            encoding="utf-8"
+
+        ) as file:
+
+
+            return json.load(file)
+
+
+
+    # ======================================================
     # Obtener número de ejecución
-    # ------------------------------------------------------
+    # ======================================================
 
     def get_execution_id(self):
 
@@ -101,9 +138,170 @@ class ModelMonitor:
 
 
 
-    # ------------------------------------------------------
-    # Evaluar métricas contra umbrales
-    # ------------------------------------------------------
+    # ======================================================
+    # Validación de datos de entrada
+    # ======================================================
+
+    def validate_input_data(
+
+        self,
+
+        input_data
+
+    ):
+
+
+        training = self.load_training_data()
+
+
+        features = training["features"]
+
+
+        errors = []
+
+
+
+        for field, rules in features.items():
+
+
+            # Validar existencia del campo
+
+            if field not in input_data:
+
+
+                errors.append(
+
+                    f"Campo faltante: {field}"
+
+                )
+
+                continue
+
+
+
+            value = input_data[field]
+
+
+
+            # ----------------------------------------------
+            # Validación enteros
+            # ----------------------------------------------
+
+            if rules["type"] == "integer":
+
+
+                if not isinstance(value, int):
+
+
+                    errors.append(
+
+                        f"{field} debe ser entero"
+
+                    )
+
+
+
+                elif (
+
+                    "min" in rules
+
+                    and value < rules["min"]
+
+                ):
+
+
+                    errors.append(
+
+                        f"{field} menor al mínimo permitido"
+
+                    )
+
+
+
+                elif (
+
+                    "max" in rules
+
+                    and value > rules["max"]
+
+                ):
+
+
+                    errors.append(
+
+                        f"{field} mayor al máximo permitido"
+
+                    )
+
+
+
+            # ----------------------------------------------
+            # Validación flotantes
+            # ----------------------------------------------
+
+            if rules["type"] == "float":
+
+
+                if not isinstance(
+
+                    value,
+
+                    (int, float)
+
+                ):
+
+
+                    errors.append(
+
+                        f"{field} debe ser numérico"
+
+                    )
+
+
+                elif (
+
+                    value < rules["min"]
+
+                    or
+
+                    value > rules["max"]
+
+                ):
+
+
+                    errors.append(
+
+                        f"{field} fuera de rango permitido"
+
+                    )
+
+
+
+            # ----------------------------------------------
+            # Validación strings
+            # ----------------------------------------------
+
+            if rules["type"] == "string":
+
+
+                if value not in rules["allowed_values"]:
+
+
+                    errors.append(
+
+                        f"{field} tiene un valor inválido"
+
+                    )
+
+
+
+        return errors
+
+
+
+    # ======================================================
+    # Evaluación de métricas y generación de alertas
+    # ======================================================
 
     def evaluate_metrics(
 
@@ -111,7 +309,9 @@ class ModelMonitor:
 
         latency,
 
-        status
+        status,
+
+        input_data
 
     ):
 
@@ -122,29 +322,23 @@ class ModelMonitor:
         thresholds = config["thresholds"]
 
 
-
         alerts = []
-
 
 
         alert_level = "INFO"
 
 
 
-        # -------------------------------
-        # Validación latencia
-        # -------------------------------
+        # ----------------------------------------------
+        # Validación de latencia
+        # ----------------------------------------------
 
-        if latency > thresholds[
-
-            "max_latency_seconds"
-
-        ]:
+        if latency > thresholds["max_latency_seconds"]:
 
 
             alerts.append(
 
-                "ADVERTENCIA: la latencia superó el umbral permitido."
+                config["alerts"]["latency_warning"]
 
             )
 
@@ -153,21 +347,48 @@ class ModelMonitor:
 
 
 
-        # -------------------------------
-        # Validación errores
-        # -------------------------------
+        # ----------------------------------------------
+        # Validación de errores
+        # ----------------------------------------------
 
         if status == "ERROR":
 
 
             alerts.append(
 
-                "CRÍTICO: error durante la ejecución del modelo."
+                config["alerts"]["error_warning"]
 
             )
 
 
             alert_level = "CRITICAL"
+
+
+
+        # ----------------------------------------------
+        # Validación calidad de datos
+        # ----------------------------------------------
+
+        validation_errors = self.validate_input_data(
+
+            input_data
+
+        )
+
+
+        if len(validation_errors) > 0:
+
+
+            alerts.append(
+
+                config["alerts"]
+
+                ["invalid_data_warning"]
+
+            )
+
+
+            alert_level = "WARNING"
 
 
 
@@ -181,15 +402,20 @@ class ModelMonitor:
 
             "alerts":
 
-            alerts
+            alerts,
+
+
+            "validation_errors":
+
+            validation_errors
 
         }
 
 
 
-    # ------------------------------------------------------
-    # Generar archivo predictions.log
-    # ------------------------------------------------------
+    # ======================================================
+    # Crear registro de predicción
+    # ======================================================
 
     def write_prediction_log(
 
@@ -217,7 +443,9 @@ class ModelMonitor:
 
             latency,
 
-            status
+            status,
+
+            input_data
 
         )
 
@@ -296,7 +524,13 @@ class ModelMonitor:
 
                 "alerts":
 
-                monitoring_status["alerts"]
+                monitoring_status["alerts"],
+
+
+
+                "validation_errors":
+
+                monitoring_status["validation_errors"]
 
 
             }
@@ -306,7 +540,7 @@ class ModelMonitor:
 
 
 
-        # Crear archivo si no existe
+        # Crear carpeta si no existe
 
         os.makedirs(
 
@@ -317,6 +551,10 @@ class ModelMonitor:
         )
 
 
+
+        # ----------------------------------------------
+        # Guardar log detallado
+        # ----------------------------------------------
 
         with open(
 
@@ -367,7 +605,7 @@ class ModelMonitor:
 
 
 
-        # Guardar histórico para dashboard
+        # Guardar histórico
 
         self.save_metrics_history(
 
@@ -377,9 +615,9 @@ class ModelMonitor:
 
 
 
-    # ------------------------------------------------------
-    # Guardar métricas históricas
-    # ------------------------------------------------------
+    # ======================================================
+    # Guardar histórico para Dashboard
+    # ======================================================
 
     def save_metrics_history(
 
@@ -388,6 +626,7 @@ class ModelMonitor:
         log_entry
 
     ):
+
 
 
         history = []
@@ -459,7 +698,20 @@ class ModelMonitor:
 
             log_entry["monitoring"]
 
-            ["alerts"]
+            ["alerts"],
+
+
+
+            "invalid_data":
+
+            len(
+
+                log_entry["monitoring"]
+
+                ["validation_errors"]
+
+            ) > 0
+
 
         }
 
