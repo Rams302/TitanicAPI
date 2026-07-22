@@ -1,55 +1,220 @@
 {
     "dataset": "Titanic Dataset",
+
     "model": "TitanicAutoML",
+
     "version": "1.0",
+
+    "framework": "AutoGluon",
+
+    "target": "Survived",
+
+
+    "training_information": {
+
+        "training_rows": 712,
+
+        "testing_rows": 179,
+
+        "training_split": 0.8,
+
+        "random_state": 42
+
+    },
+
 
     "features": {
 
+
         "Pclass": {
+
             "type": "integer",
-            "allowed_values": [1, 2, 3]
+
+            "allowed_values": [1, 2, 3],
+
+            "description": "Clase del pasajero"
+
         },
+
 
         "Sex": {
+
             "type": "string",
+
             "allowed_values": [
+
                 "male",
+
                 "female"
-            ]
+
+            ],
+
+            "description": "Sexo del pasajero"
+
         },
+
 
         "Age": {
+
             "type": "float",
+
             "min": 0,
-            "max": 100
+
+            "max": 100,
+
+            "description": "Edad del pasajero"
+
         },
+
 
         "SibSp": {
+
             "type": "integer",
+
             "min": 0,
-            "max": 10
+
+            "max": 10,
+
+            "description": "Número de hermanos o esposos a bordo"
+
         },
+
 
         "Parch": {
+
             "type": "integer",
+
             "min": 0,
-            "max": 10
+
+            "max": 10,
+
+            "description": "Número de padres o hijos a bordo"
+
         },
+
 
         "Fare": {
+
             "type": "float",
+
             "min": 0,
-            "max": 600
+
+            "max": 600,
+
+            "description": "Tarifa pagada"
+
         },
 
+
         "Embarked": {
+
             "type": "string",
+
             "allowed_values": [
+
                 "S",
+
                 "C",
+
                 "Q"
-            ]
+
+            ],
+
+            "description": "Puerto de embarque"
+
         }
 
+
+    },
+
+
+    "statistics": {
+
+
+        "Age": {
+
+            "mean": 29.7,
+
+            "median": 28.0,
+
+            "std": 14.5
+
+        },
+
+
+        "Fare": {
+
+            "mean": 32.2,
+
+            "median": 14.4,
+
+            "std": 49.7
+
+        },
+
+
+        "Pclass_distribution": {
+
+
+            "1": 0.24,
+
+            "2": 0.21,
+
+            "3": 0.55
+
+        },
+
+
+        "Sex_distribution": {
+
+
+            "male": 0.65,
+
+            "female": 0.35
+
+        },
+
+
+        "Embarked_distribution": {
+
+
+            "S": 0.72,
+
+            "C": 0.19,
+
+            "Q": 0.09
+
+        }
+
+    },
+
+
+    "drift_detection": {
+
+
+        "enabled": true,
+
+
+        "method": "percentage_difference",
+
+
+        "threshold_percentage": 15,
+
+
+        "monitored_features": [
+
+            "Age",
+
+            "Fare",
+
+            "Pclass",
+
+            "Sex",
+
+            "Embarked"
+
+        ]
+
     }
+
 }
