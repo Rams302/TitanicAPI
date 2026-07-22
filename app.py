@@ -1,6 +1,6 @@
 # ==========================================================
 # API REST - TITANIC DATASET
-# AutoGluon + FastAPI + Monitoring MLOps
+# AutoGluon + FastAPI + Monitoring MLOps + MLflow
 # ==========================================================
 
 
@@ -11,16 +11,13 @@ from pydantic import BaseModel
 
 import pandas as pd
 
+
 import time
 
 import uuid
 
-import json
 
-import os
-
-
-from datetime import datetime
+import mlflow
 
 
 from autogluon.tabular import TabularPredictor
@@ -30,16 +27,39 @@ from monitoring.monitor import ModelMonitor
 
 
 
-# ----------------------------------------------------------
-# Crear aplicación
-# ----------------------------------------------------------
+
+# ==========================================================
+# CONFIGURACIÓN MLFLOW
+# ==========================================================
+
+
+mlflow.set_tracking_uri(
+
+    "file:./mlruns"
+
+)
+
+
+mlflow.set_experiment(
+
+    "TitanicAPI_Predictions"
+
+)
+
+
+
+
+# ==========================================================
+# CREAR APLICACIÓN
+# ==========================================================
+
 
 app = FastAPI(
 
     title="Titanic Prediction API",
 
     description=
-    "Predicción Titanic utilizando AutoGluon con monitoreo MLOps",
+    "Predicción de supervivencia Titanic con AutoGluon + MLOps + MLflow",
 
     version="1.2"
 
@@ -47,9 +67,11 @@ app = FastAPI(
 
 
 
-# ----------------------------------------------------------
-# Cargar modelo
-# ----------------------------------------------------------
+
+# ==========================================================
+# CARGAR MODELO
+# ==========================================================
+
 
 predictor = TabularPredictor.load(
 
@@ -59,40 +81,28 @@ predictor = TabularPredictor.load(
 
 
 
-# ----------------------------------------------------------
-# Cargar métricas del modelo
-# ----------------------------------------------------------
-
-
-MODEL_INFO = {}
-
-
-if os.path.exists(
-    "model_metrics.json"
-):
-
-    with open(
-        "model_metrics.json"
-    ) as file:
-
-        MODEL_INFO = json.load(file)
+MODEL_VERSION = "1.0"
 
 
 
-# ----------------------------------------------------------
-# Inicializar monitor
-# ----------------------------------------------------------
+
+# ==========================================================
+# MONITOR
+# ==========================================================
 
 
 monitor = ModelMonitor()
 
 
 
-# ----------------------------------------------------------
-# Modelo entrada
-# ----------------------------------------------------------
+
+# ==========================================================
+# MODELO INPUT
+# ==========================================================
+
 
 class Passenger(BaseModel):
+
 
     Pclass: int
 
@@ -110,58 +120,71 @@ class Passenger(BaseModel):
 
 
 
-# ----------------------------------------------------------
-# Home
-# ----------------------------------------------------------
+
+# ==========================================================
+# HOME
+# ==========================================================
+
 
 @app.get("/")
+
+
 def home():
 
+
     return {
+
 
         "mensaje":
         "Titanic Prediction API",
 
+
         "monitoring":
         "enabled",
 
-        "model":
-        MODEL_INFO.get(
-            "model_name",
-            "unknown"
-        )
+
+        "mlflow":
+        "enabled"
+
 
     }
 
 
 
-# ----------------------------------------------------------
-# Health check
-# ----------------------------------------------------------
+
+# ==========================================================
+# HEALTH CHECK
+# ==========================================================
+
 
 @app.get("/health")
+
+
 def health():
+
 
     return {
 
-        "status":
-        "OK",
 
-        "timestamp":
-        datetime.now().strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
+        "status":
+        "OK"
+
 
     }
 
 
 
-# ----------------------------------------------------------
-# Información modelo
-# ----------------------------------------------------------
+
+# ==========================================================
+# INFO MODELO
+# ==========================================================
+
 
 @app.get("/info")
+
+
 def info():
+
 
     return {
 
@@ -174,41 +197,37 @@ def info():
         "AutoGluon",
 
 
-        "accuracy":
-        MODEL_INFO.get(
-            "accuracy",
-            None
-        ),
+        "objetivo":
+        "Survived",
 
 
-        "training_date":
-        MODEL_INFO.get(
-            "training_date",
-            None
-        )
+        "version":
+        MODEL_VERSION
+
 
     }
 
 
 
 
-# ----------------------------------------------------------
-# Predicción
-# ----------------------------------------------------------
+# ==========================================================
+# PREDICCIÓN
+# ==========================================================
+
 
 @app.post("/predict")
+
 
 def predict(passenger: Passenger):
 
 
+
     request_id = str(
+
         uuid.uuid4()
+
     )
 
-
-    timestamp = datetime.now().strftime(
-        "%Y-%m-%d %H:%M:%S"
-    )
 
 
     start_time = time.time()
@@ -217,126 +236,211 @@ def predict(passenger: Passenger):
 
     status = "SUCCESS"
 
+
+
     resultado = None
 
-    probabilidades_resultado = {}
+
+
+    probabilidades_resultado = None
 
 
 
-    try:
+    with mlflow.start_run(
+
+        run_name="Prediction_Run"
+
+    ):
 
 
-        datos = pd.DataFrame(
-
-            [
-                passenger.model_dump()
-            ]
-
-        )
+        try:
 
 
+            datos = pd.DataFrame(
 
-        prediccion = predictor.predict(
+                [passenger.model_dump()]
 
-            datos
-
-        )
-
-
-
-        probabilidades = predictor.predict_proba(
-
-            datos
-
-        )
-
-
-
-        resultado = int(
-
-            prediccion.iloc[0]
-
-        )
-
-
-
-        probabilidades_resultado = {
-
-
-            "probabilidad_no_sobrevive":
-
-            float(
-                probabilidades.iloc[0][0]
-            ),
-
-
-
-            "probabilidad_sobrevive":
-
-            float(
-                probabilidades.iloc[0][1]
             )
 
-        }
+
+
+            prediccion = predictor.predict(
+
+                datos
+
+            )
 
 
 
-    except Exception as error:
+            probabilidades = predictor.predict_proba(
 
+                datos
 
-        status = "ERROR"
-
-
-        resultado = str(error)
-
-
-
-    latency = round(
-
-        time.time() - start_time,
-
-        4
-
-    )
+            )
 
 
 
-    # ------------------------------------------------------
-    # Log para monitoreo
-    # ------------------------------------------------------
+            resultado = int(
 
+                prediccion.iloc[0]
 
-    monitor.write_prediction_log(
-
-        timestamp=timestamp,
-
-
-        request_id=request_id,
-
-
-        input_data=passenger.model_dump(),
-
-
-        prediction=resultado,
-
-
-        probabilities=probabilidades_resultado,
-
-
-        latency=latency,
-
-
-        status=status,
-
-
-        model_version="1.0"
-
-    )
+            )
 
 
 
+            probabilidades_resultado = {
 
-    if status == "ERROR":
+
+                "probabilidad_no_sobrevive":
+
+                float(
+
+                    probabilidades.iloc[0][0]
+
+                ),
+
+
+
+                "probabilidad_sobrevive":
+
+                float(
+
+                    probabilidades.iloc[0][1]
+
+                )
+
+            }
+
+
+
+        except Exception as error:
+
+
+
+            status="ERROR"
+
+
+
+            resultado=str(error)
+
+
+
+
+        latency = round(
+
+            time.time()
+
+            -
+
+            start_time,
+
+            4
+
+        )
+
+
+
+        # ==================================================
+        # REGISTRO EN MLFLOW
+        # ==================================================
+
+
+
+        mlflow.log_param(
+
+            "model_version",
+
+            MODEL_VERSION
+
+        )
+
+
+        mlflow.log_param(
+
+            "model",
+
+            predictor.model_best
+
+        )
+
+
+        mlflow.log_metric(
+
+            "latency_seconds",
+
+            latency
+
+        )
+
+
+
+        if status=="SUCCESS":
+
+
+            mlflow.log_metric(
+
+                "prediction",
+
+                resultado
+
+            )
+
+
+            mlflow.log_metric(
+
+                "prediction_confidence",
+
+                max(
+
+                    probabilidades_resultado.values()
+
+                )
+
+            )
+
+
+        else:
+
+
+            mlflow.log_param(
+
+                "error",
+
+                resultado
+
+            )
+
+
+
+        # ==================================================
+        # MONITORING LOG
+        # ==================================================
+
+
+
+        monitor.write_prediction_log(
+
+            request_id=request_id,
+
+            input_data=passenger.model_dump(),
+
+            prediction=resultado,
+
+            latency=latency,
+
+            status=status
+
+        )
+
+
+
+
+    # ======================================================
+    # RESPUESTA ERROR
+    # ======================================================
+
+
+    if status=="ERROR":
 
 
         return {
@@ -352,13 +456,24 @@ def predict(passenger: Passenger):
             status,
 
 
+            "latency_seconds":
+
+            latency,
+
+
             "detail":
 
             resultado
 
+
         }
 
 
+
+
+    # ======================================================
+    # RESPUESTA EXITOSA
+    # ======================================================
 
 
     return {
@@ -369,19 +484,27 @@ def predict(passenger: Passenger):
         request_id,
 
 
-        "timestamp":
-
-        timestamp,
-
-
         "prediction":
 
         resultado,
 
 
-        "probabilidades":
+        "probabilidad_no_sobrevive":
 
-        probabilidades_resultado,
+        probabilidades_resultado[
+
+            "probabilidad_no_sobrevive"
+
+        ],
+
+
+        "probabilidad_sobrevive":
+
+        probabilidades_resultado[
+
+            "probabilidad_sobrevive"
+
+        ],
 
 
         "latency_seconds":
@@ -392,5 +515,6 @@ def predict(passenger: Passenger):
         "status":
 
         status
+
 
     }
