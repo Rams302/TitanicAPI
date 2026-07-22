@@ -3,30 +3,104 @@
 
     "model_version": "1.0",
 
-    "description": "Configuracion de metricas y umbrales para monitoreo del modelo Titanic",
+    "description": "Configuracion de metricas, SLO, umbrales y alertas para monitoreo MLOps del modelo Titanic",
+
+    "framework": "AutoGluon",
+
+    "evaluation_metric": "accuracy",
+
 
     "thresholds": {
 
+
         "max_latency_seconds": 2.0,
+
 
         "max_errors": 5,
 
+
         "max_invalid_requests_percentage": 10,
 
-        "min_accuracy": 0.80
+
+        "min_accuracy": 0.80,
+
+
+        "min_prediction_confidence": 0.60,
+
+
+        "max_feature_drift_percentage": 15
+
 
     },
 
+
+    "slo": {
+
+
+        "availability_percentage": 99.0,
+
+
+        "latency_target_seconds": 1.0,
+
+
+        "error_budget_percentage": 1.0
+
+
+    },
+
+
     "alerts": {
+
 
         "latency_warning":
         "ADVERTENCIA: la latencia superó el umbral permitido.",
 
+
+        "latency_critical":
+        "CRÍTICO: la latencia afecta el SLO definido.",
+
+
         "error_warning":
         "CRÍTICO: error durante la ejecución del modelo.",
 
+
         "invalid_data_warning":
-        "ADVERTENCIA: demasiadas solicitudes contienen datos invalidos."
+        "ADVERTENCIA: demasiadas solicitudes contienen datos invalidos.",
+
+
+        "confidence_warning":
+        "ADVERTENCIA: baja confianza en la predicción del modelo.",
+
+
+        "drift_warning":
+        "ADVERTENCIA: posible cambio en la distribución de datos detectado.",
+
+
+        "accuracy_warning":
+        "CRÍTICO: degradación del desempeño del modelo."
+
+
+    },
+
+
+    "monitoring": {
+
+
+        "enable_latency_monitoring": true,
+
+
+        "enable_error_monitoring": true,
+
+
+        "enable_data_validation": true,
+
+
+        "enable_prediction_confidence": true,
+
+
+        "enable_drift_detection": true
+
 
     }
+
 }
