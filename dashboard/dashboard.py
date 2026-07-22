@@ -1,565 +1,639 @@
-{
-  "nbformat": 4,
-  "nbformat_minor": 0,
-  "metadata": {
-    "colab": {
-      "provenance": [],
-      "gpuType": "T4",
-      "authorship_tag": "ABX9TyMgeAvEhM+JeJW70wAcukbO",
-      "include_colab_link": true
-    },
-    "kernelspec": {
-      "name": "python3",
-      "display_name": "Python 3"
-    },
-    "language_info": {
-      "name": "python"
-    },
-    "accelerator": "GPU"
-  },
-  "cells": [
-    {
-      "cell_type": "markdown",
-      "metadata": {
-        "id": "view-in-github",
-        "colab_type": "text"
-      },
-      "source": [
-        "<a href=\"https://colab.research.google.com/github/Rams302/TitanicAPI/blob/main/dashboard/dashboard.py\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
-      ]
-    },
-    {
-      "cell_type": "code",
-      "source": [
-        "# ==========================================================\n",
-        "# TITANIC API - MLOps Monitoring Dashboard\n",
-        "# Streamlit + Plotly\n",
-        "# ==========================================================\n",
-        "\n",
-        "\n",
-        "import streamlit as st\n",
-        "\n",
-        "import pandas as pd\n",
-        "\n",
-        "import json\n",
-        "\n",
-        "import os\n",
-        "\n",
-        "\n",
-        "import plotly.express as px\n",
-        "\n",
-        "import plotly.graph_objects as go\n",
-        "\n",
-        "\n",
-        "\n",
-        "# ----------------------------------------------------------\n",
-        "# Configuración página\n",
-        "# ----------------------------------------------------------\n",
-        "\n",
-        "st.set_page_config(\n",
-        "\n",
-        "    page_title=\"Titanic API Monitoring Dashboard\",\n",
-        "\n",
-        "    page_icon=\"📊\",\n",
-        "\n",
-        "    layout=\"wide\"\n",
-        "\n",
-        ")\n",
-        "\n",
-        "\n",
-        "\n",
-        "# ----------------------------------------------------------\n",
-        "# Rutas archivos\n",
-        "# ----------------------------------------------------------\n",
-        "\n",
-        "HISTORY_FILE = (\n",
-        "\n",
-        "    \"../monitoring/metrics_history.json\"\n",
-        "\n",
-        ")\n",
-        "\n",
-        "\n",
-        "CONFIG_FILE = (\n",
-        "\n",
-        "    \"../monitoring/current_model_metrics.json\"\n",
-        "\n",
-        ")\n",
-        "\n",
-        "\n",
-        "\n",
-        "# ----------------------------------------------------------\n",
-        "# Función leer histórico\n",
-        "# ----------------------------------------------------------\n",
-        "\n",
-        "def load_history():\n",
-        "\n",
-        "\n",
-        "    if not os.path.exists(HISTORY_FILE):\n",
-        "\n",
-        "        return pd.DataFrame()\n",
-        "\n",
-        "\n",
-        "\n",
-        "    with open(\n",
-        "\n",
-        "        HISTORY_FILE,\n",
-        "\n",
-        "        \"r\",\n",
-        "\n",
-        "        encoding=\"utf-8\"\n",
-        "\n",
-        "    ) as file:\n",
-        "\n",
-        "\n",
-        "        data = json.load(file)\n",
-        "\n",
-        "\n",
-        "\n",
-        "    return pd.DataFrame(data)\n",
-        "\n",
-        "\n",
-        "\n",
-        "# ----------------------------------------------------------\n",
-        "# Función leer configuración\n",
-        "# ----------------------------------------------------------\n",
-        "\n",
-        "def load_configuration():\n",
-        "\n",
-        "\n",
-        "    if not os.path.exists(CONFIG_FILE):\n",
-        "\n",
-        "        return {}\n",
-        "\n",
-        "\n",
-        "\n",
-        "    with open(\n",
-        "\n",
-        "        CONFIG_FILE,\n",
-        "\n",
-        "        \"r\",\n",
-        "\n",
-        "        encoding=\"utf-8\"\n",
-        "\n",
-        "    ) as file:\n",
-        "\n",
-        "\n",
-        "        return json.load(file)\n",
-        "\n",
-        "\n",
-        "\n",
-        "# ----------------------------------------------------------\n",
-        "# Cargar información\n",
-        "# ----------------------------------------------------------\n",
-        "\n",
-        "df = load_history()\n",
-        "\n",
-        "config = load_configuration()\n",
-        "\n",
-        "\n",
-        "\n",
-        "# ----------------------------------------------------------\n",
-        "# Título\n",
-        "# ----------------------------------------------------------\n",
-        "\n",
-        "st.title(\n",
-        "    \"📊 Titanic API - MLOps Monitoring Dashboard\"\n",
-        ")\n",
-        "\n",
-        "\n",
-        "st.write(\n",
-        "\n",
-        "    \"Dashboard de monitoreo operativo del modelo Titanic utilizando métricas generadas por la API.\"\n",
-        "\n",
-        ")\n",
-        "\n",
-        "\n",
-        "\n",
-        "# ----------------------------------------------------------\n",
-        "# Validación datos\n",
-        "# ----------------------------------------------------------\n",
-        "\n",
-        "if df.empty:\n",
-        "\n",
-        "\n",
-        "    st.warning(\n",
-        "\n",
-        "        \"No existen métricas todavía. Ejecuta predicciones desde la API.\"\n",
-        "\n",
-        "    )\n",
-        "\n",
-        "\n",
-        "    st.stop()\n",
-        "\n",
-        "\n",
-        "\n",
-        "# ----------------------------------------------------------\n",
-        "# Métricas principales\n",
-        "# ----------------------------------------------------------\n",
-        "\n",
-        "col1, col2, col3, col4 = st.columns(4)\n",
-        "\n",
-        "\n",
-        "\n",
-        "with col1:\n",
-        "\n",
-        "    st.metric(\n",
-        "\n",
-        "        \"Total ejecuciones\",\n",
-        "\n",
-        "        len(df)\n",
-        "\n",
-        "    )\n",
-        "\n",
-        "\n",
-        "\n",
-        "with col2:\n",
-        "\n",
-        "    st.metric(\n",
-        "\n",
-        "        \"Latencia promedio\",\n",
-        "\n",
-        "        round(\n",
-        "\n",
-        "            df[\"latency_seconds\"].mean(),\n",
-        "\n",
-        "            4\n",
-        "\n",
-        "        )\n",
-        "\n",
-        "    )\n",
-        "\n",
-        "\n",
-        "\n",
-        "with col3:\n",
-        "\n",
-        "    success = (\n",
-        "\n",
-        "        df[\"status\"]\n",
-        "\n",
-        "        ==\n",
-        "\n",
-        "        \"SUCCESS\"\n",
-        "\n",
-        "    ).sum()\n",
-        "\n",
-        "\n",
-        "    st.metric(\n",
-        "\n",
-        "        \"Predicciones exitosas\",\n",
-        "\n",
-        "        success\n",
-        "\n",
-        "    )\n",
-        "\n",
-        "\n",
-        "\n",
-        "with col4:\n",
-        "\n",
-        "    warnings = (\n",
-        "\n",
-        "        df[\"alert_level\"]\n",
-        "\n",
-        "        !=\n",
-        "\n",
-        "        \"INFO\"\n",
-        "\n",
-        "    ).sum()\n",
-        "\n",
-        "\n",
-        "    st.metric(\n",
-        "\n",
-        "        \"Alertas\",\n",
-        "\n",
-        "        warnings\n",
-        "\n",
-        "    )\n",
-        "\n",
-        "\n",
-        "\n",
-        "# ==========================================================\n",
-        "# GRAFICA 1\n",
-        "# Distribución de solicitudes\n",
-        "# Pie Chart\n",
-        "# ==========================================================\n",
-        "\n",
-        "\n",
-        "st.subheader(\n",
-        "\n",
-        "    \"Distribución de solicitudes\"\n",
-        "\n",
-        ")\n",
-        "\n",
-        "\n",
-        "\n",
-        "status_count = (\n",
-        "\n",
-        "    df[\"status\"]\n",
-        "\n",
-        "    .value_counts()\n",
-        "\n",
-        "    .reset_index()\n",
-        "\n",
-        ")\n",
-        "\n",
-        "\n",
-        "\n",
-        "status_count.columns = [\n",
-        "\n",
-        "    \"status\",\n",
-        "\n",
-        "    \"cantidad\"\n",
-        "\n",
-        "]\n",
-        "\n",
-        "\n",
-        "\n",
-        "fig_pie = px.pie(\n",
-        "\n",
-        "    status_count,\n",
-        "\n",
-        "    names=\"status\",\n",
-        "\n",
-        "    values=\"cantidad\",\n",
-        "\n",
-        "    title=\"Estado de solicitudes\"\n",
-        "\n",
-        ")\n",
-        "\n",
-        "\n",
-        "\n",
-        "st.plotly_chart(\n",
-        "\n",
-        "    fig_pie,\n",
-        "\n",
-        "    use_container_width=True\n",
-        "\n",
-        ")\n",
-        "\n",
-        "\n",
-        "\n",
-        "# ==========================================================\n",
-        "# GRAFICA 2\n",
-        "# Latencia con umbrales\n",
-        "# Line Chart\n",
-        "# ==========================================================\n",
-        "\n",
-        "\n",
-        "st.subheader(\n",
-        "\n",
-        "    \"Latencia por ejecución\"\n",
-        "\n",
-        ")\n",
-        "\n",
-        "\n",
-        "\n",
-        "fig_latency = go.Figure()\n",
-        "\n",
-        "\n",
-        "\n",
-        "fig_latency.add_trace(\n",
-        "\n",
-        "    go.Scatter(\n",
-        "\n",
-        "        x=df[\"execution_id\"],\n",
-        "\n",
-        "        y=df[\"latency_seconds\"],\n",
-        "\n",
-        "        mode=\"lines+markers\",\n",
-        "\n",
-        "        name=\"Latencia\"\n",
-        "\n",
-        "    )\n",
-        "\n",
-        ")\n",
-        "\n",
-        "\n",
-        "\n",
-        "# Obtener umbral\n",
-        "\n",
-        "max_latency = (\n",
-        "\n",
-        "    config\n",
-        "\n",
-        "    .get(\n",
-        "\n",
-        "        \"thresholds\",\n",
-        "\n",
-        "        {}\n",
-        "\n",
-        "    )\n",
-        "\n",
-        "    .get(\n",
-        "\n",
-        "        \"max_latency_seconds\",\n",
-        "\n",
-        "        2\n",
-        "\n",
-        "    )\n",
-        "\n",
-        ")\n",
-        "\n",
-        "\n",
-        "\n",
-        "# Línea límite superior\n",
-        "\n",
-        "fig_latency.add_trace(\n",
-        "\n",
-        "    go.Scatter(\n",
-        "\n",
-        "        x=df[\"execution_id\"],\n",
-        "\n",
-        "        y=[max_latency] * len(df),\n",
-        "\n",
-        "        mode=\"lines\",\n",
-        "\n",
-        "        name=\"Umbral máximo\",\n",
-        "\n",
-        "        line=dict(\n",
-        "\n",
-        "            dash=\"dash\"\n",
-        "\n",
-        "        )\n",
-        "\n",
-        "    )\n",
-        "\n",
-        ")\n",
-        "\n",
-        "\n",
-        "\n",
-        "fig_latency.update_layout(\n",
-        "\n",
-        "    xaxis_title=\"Número de ejecución\",\n",
-        "\n",
-        "    yaxis_title=\"Latencia segundos\"\n",
-        "\n",
-        ")\n",
-        "\n",
-        "\n",
-        "\n",
-        "st.plotly_chart(\n",
-        "\n",
-        "    fig_latency,\n",
-        "\n",
-        "    use_container_width=True\n",
-        "\n",
-        ")\n",
-        "\n",
-        "\n",
-        "\n",
-        "# ==========================================================\n",
-        "# GRAFICA 3\n",
-        "# Histórico de métricas\n",
-        "# Bar Chart\n",
-        "# ==========================================================\n",
-        "\n",
-        "\n",
-        "st.subheader(\n",
-        "\n",
-        "    \"Histórico de ejecuciones\"\n",
-        "\n",
-        ")\n",
-        "\n",
-        "\n",
-        "\n",
-        "fig_bar = px.bar(\n",
-        "\n",
-        "    df,\n",
-        "\n",
-        "    x=\"execution_id\",\n",
-        "\n",
-        "    y=\"latency_seconds\",\n",
-        "\n",
-        "    color=\"status\",\n",
-        "\n",
-        "    title=\"Latencia por ejecución\"\n",
-        "\n",
-        ")\n",
-        "\n",
-        "\n",
-        "\n",
-        "fig_bar.update_layout(\n",
-        "\n",
-        "    xaxis_title=\"Ejecución\",\n",
-        "\n",
-        "    yaxis_title=\"Latencia segundos\"\n",
-        "\n",
-        ")\n",
-        "\n",
-        "\n",
-        "\n",
-        "st.plotly_chart(\n",
-        "\n",
-        "    fig_bar,\n",
-        "\n",
-        "    use_container_width=True\n",
-        "\n",
-        ")\n",
-        "\n",
-        "\n",
-        "\n",
-        "# ==========================================================\n",
-        "# ALERTAS\n",
-        "# ==========================================================\n",
-        "\n",
-        "\n",
-        "st.subheader(\n",
-        "\n",
-        "    \"Alertas generadas\"\n",
-        "\n",
-        ")\n",
-        "\n",
-        "\n",
-        "\n",
-        "alerts_df = df[\n",
-        "\n",
-        "    df[\"alerts\"].apply(\n",
-        "\n",
-        "        lambda x:\n",
-        "\n",
-        "        len(x) > 0\n",
-        "\n",
-        "    )\n",
-        "\n",
-        "]\n",
-        "\n",
-        "\n",
-        "\n",
-        "if alerts_df.empty:\n",
-        "\n",
-        "\n",
-        "    st.success(\n",
-        "\n",
-        "        \"No existen alertas activas.\"\n",
-        "\n",
-        "    )\n",
-        "\n",
-        "\n",
-        "else:\n",
-        "\n",
-        "\n",
-        "    for _, row in alerts_df.iterrows():\n",
-        "\n",
-        "\n",
-        "        for alert in row[\"alerts\"]:\n",
-        "\n",
-        "\n",
-        "            if row[\"alert_level\"] == \"CRITICAL\":\n",
-        "\n",
-        "\n",
-        "                st.error(alert)\n",
-        "\n",
-        "\n",
-        "\n",
-        "            else:\n",
-        "\n",
-        "\n",
-        "                st.warning(alert)"
-      ],
-      "metadata": {
-        "id": "cqwLfUwSfCP3"
-      },
-      "execution_count": null,
-      "outputs": []
-    }
-  ]
-}
+# ==========================================================
+# TITANIC API - MLOps Monitoring Dashboard
+# Streamlit + Plotly
+# ==========================================================
+
+
+import streamlit as st
+
+import pandas as pd
+
+import json
+
+import os
+
+
+import plotly.express as px
+
+import plotly.graph_objects as go
+
+
+
+# ==========================================================
+# CONFIGURACIÓN
+# ==========================================================
+
+
+st.set_page_config(
+
+    page_title="Titanic API Monitoring Dashboard",
+
+    page_icon="📊",
+
+    layout="wide"
+
+)
+
+
+
+# ==========================================================
+# RUTAS
+# ==========================================================
+
+
+BASE_PATH = os.path.dirname(
+    os.path.dirname(
+        os.path.abspath(__file__)
+    )
+)
+
+
+HISTORY_FILE = os.path.join(
+
+    BASE_PATH,
+
+    "monitoring",
+
+    "metrics_history.json"
+
+)
+
+
+CONFIG_FILE = os.path.join(
+
+    BASE_PATH,
+
+    "monitoring",
+
+    "current_model_metrics.json"
+
+)
+
+
+
+# ==========================================================
+# FUNCIONES
+# ==========================================================
+
+
+def load_json(path):
+
+
+    if not os.path.exists(path):
+
+        return None
+
+
+    with open(
+
+        path,
+
+        "r",
+
+        encoding="utf-8"
+
+    ) as file:
+
+
+        return json.load(file)
+
+
+
+
+def load_history():
+
+
+    data = load_json(
+
+        HISTORY_FILE
+
+    )
+
+
+    if data is None:
+
+        return pd.DataFrame()
+
+
+    return pd.DataFrame(data)
+
+
+
+
+# ==========================================================
+# CARGAR DATOS
+# ==========================================================
+
+
+df = load_history()
+
+
+config = load_json(
+
+    CONFIG_FILE
+
+)
+
+
+
+
+# ==========================================================
+# TITULO
+# ==========================================================
+
+
+st.title(
+    "📊 Titanic API - MLOps Monitoring Dashboard"
+)
+
+
+st.write(
+
+    "Dashboard operacional para monitoreo del modelo Titanic usando métricas generadas por la API."
+
+)
+
+
+
+# ==========================================================
+# INFORMACIÓN DEL MODELO
+# ==========================================================
+
+
+if config:
+
+
+    st.subheader(
+
+        "Información del modelo"
+
+    )
+
+
+    col1,col2,col3,col4 = st.columns(4)
+
+
+
+    col1.metric(
+
+        "Modelo",
+
+        config.get(
+
+            "model_name",
+
+            "N/A"
+
+        )
+
+    )
+
+
+    col2.metric(
+
+        "Versión",
+
+        config.get(
+
+            "model_version",
+
+            "N/A"
+
+        )
+
+    )
+
+
+    col3.metric(
+
+        "Framework",
+
+        config.get(
+
+            "framework",
+
+            "N/A"
+
+        )
+
+    )
+
+
+    col4.metric(
+
+        "Accuracy mínima",
+
+        config.get(
+
+            "thresholds",
+
+            {}
+
+        ).get(
+
+            "min_accuracy",
+
+            0
+
+        )
+
+    )
+
+
+
+
+# ==========================================================
+# VALIDACIÓN
+# ==========================================================
+
+
+if df.empty:
+
+
+    st.warning(
+
+        "No existen métricas todavía. Ejecute predicciones desde la API."
+
+    )
+
+
+    st.stop()
+
+
+
+# ==========================================================
+# MÉTRICAS OPERACIONALES
+# ==========================================================
+
+
+st.subheader(
+
+    "Indicadores operacionales"
+
+)
+
+
+
+total = len(df)
+
+
+
+errors = (
+
+    df["status"]
+
+    ==
+
+    "ERROR"
+
+).sum()
+
+
+
+success = (
+
+    df["status"]
+
+    ==
+
+    "SUCCESS"
+
+).sum()
+
+
+
+alerts = (
+
+    df["alert_level"]
+
+    !=
+
+    "INFO"
+
+).sum()
+
+
+
+invalid = (
+
+    df["invalid_data"]
+
+    ==
+
+    True
+
+).sum()
+
+
+
+latency = round(
+
+    df["latency_seconds"].mean(),
+
+    4
+
+)
+
+
+
+c1,c2,c3,c4,c5 = st.columns(5)
+
+
+
+c1.metric(
+
+    "Requests",
+
+    total
+
+)
+
+
+c2.metric(
+
+    "Éxitos",
+
+    success
+
+)
+
+
+c3.metric(
+
+    "Errores",
+
+    errors
+
+)
+
+
+c4.metric(
+
+    "Latencia promedio",
+
+    latency
+
+)
+
+
+c5.metric(
+
+    "Alertas",
+
+    alerts
+
+)
+
+
+
+
+# ==========================================================
+# GRAFICA 1
+# DISTRIBUCIÓN REQUESTS
+# ==========================================================
+
+
+st.subheader(
+
+    "Distribución de solicitudes"
+
+)
+
+
+
+status_df = (
+
+    df["status"]
+
+    .value_counts()
+
+    .reset_index()
+
+)
+
+
+
+status_df.columns=[
+
+    "status",
+
+    "cantidad"
+
+]
+
+
+
+fig_pie = px.pie(
+
+    status_df,
+
+    names="status",
+
+    values="cantidad",
+
+    title="Estado de solicitudes"
+
+)
+
+
+
+st.plotly_chart(
+
+    fig_pie,
+
+    use_container_width=True
+
+)
+
+
+
+# ==========================================================
+# GRAFICA 2
+# LATENCIA
+# ==========================================================
+
+
+st.subheader(
+
+    "Latencia por ejecución"
+
+)
+
+
+
+fig_latency = go.Figure()
+
+
+
+fig_latency.add_trace(
+
+    go.Scatter(
+
+        x=df["execution_id"],
+
+        y=df["latency_seconds"],
+
+        mode="lines+markers",
+
+        name="Latencia"
+
+    )
+
+)
+
+
+
+max_latency = config.get(
+
+    "thresholds",
+
+    {}
+
+).get(
+
+    "max_latency_seconds",
+
+    2
+
+)
+
+
+
+fig_latency.add_trace(
+
+    go.Scatter(
+
+        x=df["execution_id"],
+
+        y=[max_latency]*len(df),
+
+        mode="lines",
+
+        name="Umbral máximo",
+
+        line=dict(
+
+            dash="dash"
+
+        )
+
+    )
+
+)
+
+
+
+fig_latency.update_layout(
+
+    xaxis_title="Ejecución",
+
+    yaxis_title="Segundos"
+
+)
+
+
+
+st.plotly_chart(
+
+    fig_latency,
+
+    use_container_width=True
+
+)
+
+
+
+# ==========================================================
+# GRAFICA 3
+# HISTÓRICO MÉTRICAS
+# ==========================================================
+
+
+st.subheader(
+
+    "Histórico de ejecuciones"
+
+)
+
+
+
+fig_bar = px.bar(
+
+    df,
+
+    x="execution_id",
+
+    y="latency_seconds",
+
+    color="status",
+
+    title="Latencia histórica"
+
+)
+
+
+
+st.plotly_chart(
+
+    fig_bar,
+
+    use_container_width=True
+
+)
+
+
+
+# ==========================================================
+# ALERTAS
+# ==========================================================
+
+
+st.subheader(
+
+    "Alertas generadas"
+
+)
+
+
+
+alerts_df = df[
+
+    df["alerts"].apply(
+
+        lambda x:
+
+        len(x)>0
+
+    )
+
+]
+
+
+
+if alerts_df.empty:
+
+
+    st.success(
+
+        "No existen alertas activas."
+
+    )
+
+
+else:
+
+
+    for _,row in alerts_df.iterrows():
+
+
+        for alert in row["alerts"]:
+
+
+            if row["alert_level"]=="CRITICAL":
+
+                st.error(alert)
+
+
+            else:
+
+                st.warning(alert)
