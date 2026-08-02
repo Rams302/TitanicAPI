@@ -9,6 +9,18 @@
 ![MLOps](https://img.shields.io/badge/MLOps-Monitoring-purple)
 
 ---
+# TitanicAPI — End-to-End MLOps & AI Governance Case Study
+
+> Se diseñó una solución de Machine Learning operacionalizada que transforma
+> un modelo desarrollado mediante AutoML en un servicio de inferencia observable
+> y trazable. La arquitectura incorpora FastAPI, Docker, MLflow, monitoreo,
+> alertas y estrategias de Data Drift, con el objetivo de reducir riesgos
+> operacionales y establecer una base para la gestión del ciclo de vida del
+> modelo.
+
+**Machine Learning | MLOps | Observability | AI Governance | FinOps**
+
+---
 
 ## 1. Resumen ejecutivo
 
